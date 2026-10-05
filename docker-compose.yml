@@ -1,0 +1,39 @@
+# Digital music archive: MIDI timeline normalization service.
+#
+# Overridable variables (see .env.example):
+#   HOST_PORT   host-side port published for the API (default 8080)
+#
+#   docker compose up            -- run the API in the background
+#   docker compose run --rm verify  -- one-off tests + smoke check
+
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    image: midi-normalizer:latest
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8000"
+    ports:
+      - "${HOST_PORT:-8080}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  verify:
+    build:
+      context: .
+      target: test
+    image: midi-normalizer:verify
+    environment:
+      API_BASE: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["sh", "scripts/verify.sh"]
+    restart: "no"
